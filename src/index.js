@@ -3,14 +3,14 @@ import { message } from 'telegraf/filters';
 import 'dotenv/config';
 
 const bot = new Telegraf(process.env.BOT_TOKEN || 'none');
-var ret = '';
-var dat = [];
+var idfoto = '';
+var info = [];
 const userStates = {};
-let ree = false;
+let flagphoto = false;
 
 bot.start((ctx) => {
   //   const userId = ctx.from.id;
-  userStates[ctx.from.id] = { gs: false, data: { foto: [], oshibka: '', pin: '' } };
+  userStates[ctx.from.id] = { havephoto: false, data: { foto: [], oshibka: '', pin: '' } };
 
   ctx.reply(
     'Привет! Выберите действие:',
@@ -21,44 +21,52 @@ bot.start((ctx) => {
 });
 
 bot.hears('Оставить заявку', async (ctx) => {
-  userStates[ctx.from.id] = { gs: false, data: { foto: [], oshibka: '', pin: '' } };
+  userStates[ctx.from.id] = { havephoto: false, data: { foto: [], oshibka: '', pin: '' } };
   //   const userId = ctx.from.id;
   await ctx.reply('Пожалуйста, опишите вашу проблему.');
-  userStates[ctx.from.id].gs = false;
+  userStates[ctx.from.id].havephoto = false;
+  //ret = '';
 });
 
 bot.on(message('text'), async (ctx) => {
   const userId = ctx.from.id;
   const message = ctx.message.text;
-  dat.push(message);
-  // Проверяем, что сообщение не является пином и текстом с ответом
-  if (userStates[userId].gs === false) {
-    await ctx.reply('При наличии, отправьте скриншоты или отправьте пин.');
-    userStates[userId].gs = true; // Устанавливаем флаг для ожидания фото
-  } else if (userStates[userId].gs === true) {
+  info.push(message);
+  // Проверяем, что сообщение не является текстом с ответом
+  if (userStates[userId].havephoto === false) {
+    await ctx.reply('При наличии, отправьте скриншоты или отправьте номер.');
+    userStates[userId].havephoto = true; // Устанавливаем флаг для ожидания фото
+  } else if (userStates[userId].havephoto === true) {
     await ctx.reply('Данные получены, спасибо!');
 
-    if (ree === true) {
-      await ctx.telegram.sendMediaGroup(process.env.CHAT_ID, [{ type: 'photo', media: ret }]);
+    if (flagphoto === true) {
+      //await ctx.telegram.sendMediaGroup(process.env.CHAT_ID, [{ type: 'photo', media: ret }]);
+      const caption = `${info[0]}\n\n${info[1]}`;
+    
+      await ctx.telegram.sendPhoto(process.env.CHAT_ID, idfoto, {caption: caption,});
     }
-    await ctx.telegram.sendMessage(process.env.CHAT_ID, dat[0]);
-    await ctx.telegram.sendMessage(process.env.CHAT_ID, dat[1]);
-
-    userStates[userId].gs = false; // Сбрасываем ожидание после получения данных
-    dat = [];
-    ree = false;
+    //await ctx.telegram.sendMessage(process.env.CHAT_ID, dat[0]);
+    //await ctx.telegram.sendMessage(process.env.CHAT_ID, dat[1]);
+    else {
+      const caption = `${info[0]}\n\n${info[1]}`;
+      await ctx.telegram.sendMessage(process.env.CHAT_ID, caption);
+      
+    }
+    userStates[userId].havephoto = false; // Сбрасываем ожидание после получения данных
+    info = [];
+    flagphoto = false;
   }
 });
 
 bot.on(message('photo'), async (ctx) => {
-  ree = true;
+  flagphoto = true;
   const userId = ctx.from.id;
   const photo = ctx.message.photo[ctx.message.photo.length - 1]; // Получаем самое большое изображение
   //   const fileId = photo.file_id;
-  ret = photo.file_id;
-  await ctx.reply('отправьте пин');
+  idfoto = photo.file_id;
+  await ctx.reply('отправьте номер');
 
-  userStates[userId].gs = true; // Флаг ожидания пина
+  userStates[userId].havephoto = true; // Флаг ожидания пина
 });
 
 bot.launch(() => {
